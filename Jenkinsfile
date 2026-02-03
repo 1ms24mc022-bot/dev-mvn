@@ -1,1 +1,57 @@
+pipeline {
+	agent any
+	
+	environment {
+		DOCKERHUB_CRED=credentials('dockerhub')
+		IMAGE_NAME="chethan2310/dev-mvn"
+	}
+	 triggers {
+	 	cron('* * * * *')
+	}
+	
+	stages {
+		stage('checkout') {
+			steps {
+				git url:'https://github.com/1ms24mc022-bot/dev-mvn', branch:'main'
+			}
+		}
 
+		stage('Build Maven Project') {
+			steps {
+				sh "mvn clean package -DskipTests"
+			}
+		}
+		
+		stage('Build Docker Image') {
+            		steps {
+                		script {
+                    			dockerImage = docker.build("${IMAGE_NAME}:latest")
+                		}
+            		}
+        	}
+
+		stage('Push Docker Image'){
+			steps {
+				script {
+					docker.withRegistry('https://index.docker.io/v1/','dockerhub'){
+						dockerImage.push()
+					}
+				}
+			}
+		}	
+	}
+	
+	post {
+		success {
+			echo "Pipeline Successful"
+		}
+		failure {
+			echo "Pipeline Failure"
+		}
+		always {
+			echo "Cleaning workspace"
+			deleteDir()
+		}
+	}
+
+}
